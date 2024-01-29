@@ -65,8 +65,9 @@ Use the same query as before, but change the values to exactly the ones provided
 
 **Briefly explain the output. More specifically, answer the following questions:**
 
-- What does the error mean and why does it occur?
+- What does the error mean and why does it occur? NO error.
 - What property of ACID transactions is involved in the error description?
+Atomicity, Consistency
 
 ### Task 3
 
@@ -78,8 +79,9 @@ Execute the transaction.
 
 **Briefly explain the output. More specifically, answer the following questions:**
 
-- What does the error mean and why does it occur?
+- What does the error mean and why does it occur? no error
 - The first operation executed without an error. Did Noah get charged? Why?
+    In the context of the entire transaction, even if the UPDATE statement for Noah's balance executes without an error, Noah will not be permanently charged if any subsequent part of the transaction fails. This is because the transaction must complete in its entirety for the changes to be committed. If any part of the transaction fails, the entire transaction is rolled back, undoing the deduction from Noah's balance.
 
 ### Task 4
 
@@ -126,8 +128,12 @@ Then execute the booking transaction and keep executing the `SELECT` query above
 **Briefly explain what you see. More specifically, answer the following questions:**
 
 - Can you read the member table while the booking transaction is running? Why?
-- When does the `SELECT` query see the changes from the transaction? Why? Explain it in terms of which ACID properties are playing a role on this.
+Yes, you can read the member table while the booking transaction is running.
+In PostgreSQL, the default transaction isolation level is Read Committed. Under this level, a SELECT query sees only the committed data
 
+- When does the `SELECT` query see the changes from the transaction? Why? Explain it in terms of which ACID properties are playing a role on this.
+Atomicity, Isolation, Durability : atomicity ensures that all the operations within a transaction are treated as a single unit. so if it is not committed you can see the result of the transaction. Isolation preoperty provides the ability to isolate the effects of a transaction from other transactions until it's committed.
+The SELECT query will see the changes from the transaction only after the transaction has been committed. 
 ### Task 7
 
 Do exactly the same exercise as before, but now manually add a lock at the beginning of the transaction to prevent any kind of access to the table member.
@@ -137,9 +143,12 @@ Do exactly the same exercise as before, but now manually add a lock at the begin
 **Briefly explain what you see. More specifically, answer the following question:**
 
 - Can you read the member table while the booking transaction is running? Why?
+        With an EXCLUSIVE MODE lock on the member table, other transactions can still read the table using SELECT queries while the transaction is running. The lock will prevent those transactions from performing write operations (such as UPDATE, DELETE, INSERT) on the member table but will not block reads.
+         With an ACCESS EXCLUSIVE MODE lock, other transactions cannot read or write to the member table until the lock is released.
 - What error do you get if the transaction is still running?
+        You won't necessarily get an error immediately; instead, your SELECT query to read Noah's balance in the other window will be blocked and will not execute until the lock on the member table is released. If your SELECT query waits longer than the lock_timeout setting (if configured), then it could timeout and you would receive a timeout error.
 - What instruction did you use to release the lock?
-
+        Locks are automatically released at the end of a transaction. In this case, the lock is released when you issue the COMMIT; command. There is no explicit "unlock" command needed. If you wanted to release the lock without committing the transaction, you could issue a ROLLBACK; command instead, which would also release any locks held by the transaction.
 ### Task 8
 
 Use exactly the same transaction as in task 6 (i.e. remove the lock added in task 7).
@@ -149,3 +158,5 @@ In the other window, instead of checking Noah's balance execute a query that add
 **Briefly explain what you see. More specifically, answer the following question:**
 
 - What is the observed difference between this case and the one on task 6? and why do you think that happens?
+
+ALTER TABLE command requires an ACCESS EXCLUSIVE lock on the table because it's modifying the table structure.
